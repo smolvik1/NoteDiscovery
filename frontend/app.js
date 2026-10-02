@@ -4610,6 +4610,8 @@ function noteApp() {
                         const errorData = await response.json().catch(() => ({}));
                         throw new Error(errorData.detail || this.t('move.failed_folder'));
                     }
+                    const data = await response.json().catch(() => ({}));
+                    this._notifyLinkUpdates(data.linkUpdates);
                     await this.loadSharedNotePaths();
                 } catch (error) {
                     console.error('Failed to move folder:', error);
@@ -4654,6 +4656,10 @@ function noteApp() {
                     const errorData = await response.json().catch(() => ({}));
                     const errorKey = isMedia ? 'move.failed_media' : 'move.failed_note';
                     throw new Error(errorData.detail || this.t(errorKey));
+                }
+                if (!isMedia) {
+                    const data = await response.json().catch(() => ({}));
+                    this._notifyLinkUpdates(data.linkUpdates);
                 }
                 if (isNote) await this.loadSharedNotePaths();
             } catch (error) {
@@ -5432,6 +5438,8 @@ function noteApp() {
                     body: JSON.stringify({ oldPath: folderPath, newPath: newPath })
                 });
                 if (!response.ok) throw new Error('Server returned error');
+                const data = await response.json().catch(() => ({}));
+                this._notifyLinkUpdates(data.linkUpdates);
                 return true;
             } catch (error) {
                 ErrorHandler.handle('rename folder', error);
@@ -5931,16 +5939,44 @@ function noteApp() {
             this.currentNote = newPath;
             
             try {
-                const response = await fetch(`/api/notes/${newPath}`, {
+                // Flush any unsaved editor content to the old path first, so the
+                // server-side move (which renames the file on disk) preserves
+                // in-progress edits before links are rewritten.
+                await fetch(`/api/notes/${oldPath}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ content: this.noteContent })
                 });
+                const response = await fetch('/api/notes/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ oldPath, newPath })
+                });
                 if (!response.ok) throw new Error('Server returned error');
-                await fetch(`/api/notes/${oldPath}`, { method: 'DELETE' });
+                const data = await response.json().catch(() => ({}));
+                this._notifyLinkUpdates(data.linkUpdates);
+                await this.loadSharedNotePaths();
             } catch (error) {
                 ErrorHandler.handle('rename note', error);
                 await this.loadNotes({ silent: true });
+            }
+        },
+        
+        /**
+         * Surface a toast summarising automatic link rewrites after a move or
+         * rename. No-op when the feature is off (all counts zero) or stats absent.
+         * @param {{updated_links?: number, updated_notes?: number, failed?: number}} [stats]
+         */
+        _notifyLinkUpdates(stats) {
+            if (!stats) return;
+            const links = stats.updated_links || 0;
+            const notes = stats.updated_notes || 0;
+            const failed = stats.failed || 0;
+            if (links > 0) {
+                this.toast(this.t('links.updated', { links, notes }), { type: 'success' });
+            }
+            if (failed > 0) {
+                this.toast(this.t('links.update_failed', { count: failed }), { type: 'warning' });
             }
         },
         
