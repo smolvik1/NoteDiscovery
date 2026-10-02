@@ -451,6 +451,18 @@ function noteApp() {
         showNewDropdown: false,
         dropdownTargetFolder: null, // Folder context for "New" dropdown ('' = root, null = not set)
         dropdownPosition: { top: 0, left: 0 }, // Position for contextual dropdown
+
+        // Wikilink / media autocomplete (triggered by [[ for notes, ![[ for media)
+        wikilinkAutocomplete: {
+            open: false,
+            mode: 'note',        // 'note' | 'media'
+            query: '',
+            tokenStart: 0,       // index in noteContent right after the opening [[
+            items: [],           // [{label, secondary, insert, kind, prefix, modified}]
+            activeIndex: 0,
+            position: { top: 0, left: 0 },
+        },
+        _noteNameCounts: new Map(), // lower note stem -> count, for name-vs-path insertion
         
         // Template state
         showTemplateModal: false,
@@ -1374,6 +1386,7 @@ function noteApp() {
                 overlay.scrollTop = textarea.scrollTop;
                 overlay.scrollLeft = textarea.scrollLeft;
             }
+            if (this.wikilinkAutocomplete.open) this.wlUpdatePosition();
         },
         
         // Highlight markdown syntax
@@ -1695,6 +1708,7 @@ function noteApp() {
             this._noteLookup.byNameLower.clear();
             this._noteLookup.byEndPath.clear();
             this._mediaLookup.clear();
+            this._noteNameCounts.clear();
             
             const setFirst = (map, key, value) => {
                 if (!map.has(key)) map.set(key, value);
@@ -1722,6 +1736,10 @@ function noteApp() {
                 const nameWithoutMd = name.replace(/\.md$/i, '');
                 const nameWithoutMdLower = nameWithoutMd.toLowerCase();
                 const urlPath = path.replace(/\.md$/i, '');
+
+                // Count notes per stem so autocomplete can insert a bare name when
+                // unique and a folder-relative path when ambiguous.
+                this._noteNameCounts.set(nameWithoutMdLower, (this._noteNameCounts.get(nameWithoutMdLower) || 0) + 1);
                 
                 // Store all variations for fast lookup. The value is the note's URL
                 // path, so a wikilink can be resolved to a href and not just tested
@@ -1772,6 +1790,210 @@ function noteApp() {
         resolveMediaWikilink(mediaName) {
             const nameLower = mediaName.toLowerCase();
             return this._mediaLookup.get(nameLower) || null;
+        },
+
+        // ---- Wikilink / media autocomplete -------------------------------------
+        // Triggered while typing inside [[ (notes) or ![[ (media). Suggestions are
+        // computed client-side from the already-loaded notes list; no backend calls.
+
+        // Inspect the text before the caret and open/refresh the popup when the
+        // caret sits inside an unfinished [[ / ![[ token.
+        wlDetectToken() {
+            const textarea = document.getElementById('note-editor');
+            if (!textarea || document.activeElement !== textarea) { this.wlClose(); return; }
+            if (textarea.selectionStart !== textarea.selectionEnd) { this.wlClose(); return; }
+
+            const caret = textarea.selectionStart;
+            const before = this.noteContent.substring(0, caret);
+            const idx = before.lastIndexOf('[[');
+            if (idx === -1) { this.wlClose(); return; }
+
+            const query = before.substring(idx + 2);
+            // A valid in-progress target has no bracket, pipe, or newline, and stays short.
+            if (query.length > 100 || /[\[\]\n|]/.test(query)) { this.wlClose(); return; }
+
+            this.wikilinkAutocomplete.mode = (idx > 0 && before[idx - 1] === '!') ? 'media' : 'note';
+            this.wikilinkAutocomplete.tokenStart = idx + 2;
+            this.wikilinkAutocomplete.query = query;
+            this.wlComputeItems();
+
+            if (this.wikilinkAutocomplete.items.length === 0) { this.wlClose(); return; }
+            this.wikilinkAutocomplete.activeIndex = 0;
+            this.wikilinkAutocomplete.open = true;
+            this.$nextTick(() => this.wlUpdatePosition());
+        },
+
+        // Build the (capped) suggestion list for the current query and mode.
+        wlComputeItems() {
+            const WL_LIMIT = 8;
+            const q = this.wikilinkAutocomplete.query.trim().toLowerCase();
+            const isMedia = this.wikilinkAutocomplete.mode === 'media';
+            const results = [];
+
+            for (const note of this.notes) {
+                if (isMedia ? note.type === 'note' : note.type !== 'note') continue;
+
+                const path = note.path;
+                const folder = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
+
+                let label, insert;
+                if (isMedia) {
+                    label = path.split('/').pop();   // filename with extension
+                    insert = label;
+                } else {
+                    const stem = note.name.replace(/\.md$/i, '');
+                    label = stem;
+                    // Bare name when unique, else folder-relative path (no extension).
+                    insert = (this._noteNameCounts.get(stem.toLowerCase()) || 0) > 1
+                        ? path.replace(/\.md$/i, '')
+                        : stem;
+                }
+
+                const labelLower = label.toLowerCase();
+                const pathLower = path.toLowerCase();
+                if (q && !labelLower.includes(q) && !pathLower.includes(q)) continue;
+
+                results.push({
+                    label,
+                    secondary: folder,
+                    insert,
+                    kind: note.type,
+                    prefix: q ? labelLower.startsWith(q) : false,
+                    modified: note.modified || '',
+                });
+            }
+
+            // Prefix matches first, then most-recently-modified, then alphabetical.
+            // `modified` is an ISO timestamp, so lexical compare orders by time.
+            results.sort((a, b) =>
+                (b.prefix - a.prefix) || b.modified.localeCompare(a.modified) || a.label.localeCompare(b.label));
+            this.wikilinkAutocomplete.items = results.slice(0, WL_LIMIT);
+        },
+
+        // Keyboard handling while the popup is open. Runs before the editor's
+        // Enter/Tab handlers (registered later on the same element), so
+        // stopImmediatePropagation keeps list-continuation and indent from firing.
+        wlOnKeydown(event) {
+            if (!this.wikilinkAutocomplete.open) return;
+            const wa = this.wikilinkAutocomplete;
+
+            switch (event.key) {
+                case 'ArrowDown':
+                    event.preventDefault(); event.stopImmediatePropagation();
+                    this.wlMove(1);
+                    return;
+                case 'ArrowUp':
+                    event.preventDefault(); event.stopImmediatePropagation();
+                    this.wlMove(-1);
+                    return;
+                case 'Enter':
+                case 'Tab':
+                    event.preventDefault(); event.stopImmediatePropagation();
+                    if (wa.items[wa.activeIndex]) this.wlAccept(wa.items[wa.activeIndex]);
+                    return;
+                case 'Escape':
+                    event.preventDefault(); event.stopImmediatePropagation();
+                    this.wlClose();
+                    return;
+                case 'ArrowLeft':
+                case 'ArrowRight':
+                case 'Home':
+                case 'End':
+                    this.wlClose();
+                    return;
+            }
+        },
+
+        wlMove(delta) {
+            const n = this.wikilinkAutocomplete.items.length;
+            if (!n) return;
+            this.wikilinkAutocomplete.activeIndex =
+                (this.wikilinkAutocomplete.activeIndex + delta + n) % n;
+        },
+
+        // Replace the in-progress token with the chosen target and close it off
+        // with ]] (reusing an existing trailing ]] if present).
+        wlAccept(item) {
+            if (!item) return;
+            const textarea = document.getElementById('note-editor');
+            if (!textarea) return;
+
+            const caret = textarea.selectionStart;
+            const before = this.noteContent.substring(0, this.wikilinkAutocomplete.tokenStart);
+            const after = this.noteContent.substring(caret);
+            const head = before + item.insert;
+
+            const hasClosing = after.startsWith(']]');
+            this.noteContent = hasClosing ? (head + after) : (head + ']]' + after);
+            const newCaret = head.length + 2; // after the ]]
+
+            this.wlClose();
+            this.$nextTick(() => {
+                textarea.focus();
+                textarea.selectionStart = textarea.selectionEnd = newCaret;
+                this.autoSave();
+                this.updateSyntaxHighlight();
+            });
+        },
+
+        wlClose() {
+            if (this.wikilinkAutocomplete.open) this.wikilinkAutocomplete.open = false;
+        },
+
+        // Position the popup just below the caret, clamped to the viewport.
+        wlUpdatePosition() {
+            const textarea = document.getElementById('note-editor');
+            if (!textarea) return;
+            const coords = this.wlCaretCoords(textarea, textarea.selectionStart);
+
+            const POPUP_W = 360;
+            const POPUP_H = 8 * 30 + 8; // rough height for up to 8 rows
+            let left = coords.left;
+            let top = coords.top;
+            if (left + POPUP_W > window.innerWidth) left = Math.max(4, window.innerWidth - POPUP_W - 4);
+            if (top + POPUP_H > window.innerHeight) top = Math.max(4, coords.top - coords.height - POPUP_H);
+            this.wikilinkAutocomplete.position = { top, left };
+        },
+
+        // Caret pixel coordinates inside a textarea via a hidden mirror element.
+        // Mirrors the textarea-caret-position technique (a plain textarea exposes
+        // no native caret geometry). Returns viewport-relative top/left of the line
+        // below the caret, plus the line height.
+        wlCaretCoords(textarea, position) {
+            const props = [
+                'direction', 'boxSizing', 'width', 'height', 'overflowX', 'overflowY',
+                'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'borderStyle',
+                'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+                'fontStyle', 'fontVariant', 'fontWeight', 'fontStretch', 'fontSize', 'fontSizeAdjust',
+                'lineHeight', 'fontFamily', 'textAlign', 'textTransform', 'textIndent', 'textDecoration',
+                'letterSpacing', 'wordSpacing', 'tabSize', 'MozTabSize',
+            ];
+            const computed = window.getComputedStyle(textarea);
+            const div = document.createElement('div');
+            const style = div.style;
+            style.position = 'absolute';
+            style.visibility = 'hidden';
+            style.whiteSpace = 'pre-wrap';
+            style.wordWrap = 'break-word';
+            props.forEach(p => { style[p] = computed[p]; });
+
+            div.textContent = textarea.value.substring(0, position);
+            const span = document.createElement('span');
+            span.textContent = textarea.value.substring(position) || '.';
+            div.appendChild(span);
+            document.body.appendChild(div);
+
+            const lineHeight = parseInt(computed.lineHeight, 10) || parseInt(computed.fontSize, 10) * 1.2;
+            const top = span.offsetTop + parseInt(computed.borderTopWidth, 10);
+            const left = span.offsetLeft + parseInt(computed.borderLeftWidth, 10);
+            document.body.removeChild(div);
+
+            const rect = textarea.getBoundingClientRect();
+            return {
+                top: rect.top + top - textarea.scrollTop + lineHeight,
+                left: rect.left + left - textarea.scrollLeft,
+                height: lineHeight,
+            };
         },
         
         // Resolve a Markdown image path to a vault-relative path (forward slashes).
