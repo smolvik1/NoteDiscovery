@@ -252,6 +252,10 @@
     "failed_folder": "移动文件夹失败。",
     "failed_media": "移动媒体文件失败。"
   },
+  "links": {
+    "updated": "已更新 {{notes}} 个笔记中的 {{links}} 个链接",
+    "update_failed": "无法更新 {{count}} 个笔记中的链接"
+  },
   "search": {
     "previous": "上一个 (Shift+F3)",
     "next": "下一个 (F3)",

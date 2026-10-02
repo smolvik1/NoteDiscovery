@@ -252,6 +252,10 @@
     "failed_folder": "Hiba a mappa mozgatásánál.",
     "failed_media": "Hiba a médiafájl mozgatásánál."
   },
+  "links": {
+    "updated": "{{links}} hivatkozás frissítve {{notes}} jegyzetben",
+    "update_failed": "Nem sikerült frissíteni a hivatkozásokat {{count}} jegyzetben"
+  },
   "search": {
     "previous": "Előző (Shift+F3)",
     "next": "Következő (F3)",

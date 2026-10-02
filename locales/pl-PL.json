@@ -252,6 +252,10 @@
     "failed_folder": "Nie udało się przenieść folderu.",
     "failed_media": "Nie udało się przenieść pliku multimedialnego."
   },
+  "links": {
+    "updated": "Zaktualizowano {{links}} link(i) w {{notes}} notatce/ach",
+    "update_failed": "Nie udało się zaktualizować linków w {{count}} notatce/ach"
+  },
   "search": {
     "previous": "Poprzedni (Shift+F3)",
     "next": "Następny (F3)",

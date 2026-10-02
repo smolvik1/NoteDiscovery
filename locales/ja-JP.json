@@ -252,6 +252,10 @@
     "failed_folder": "フォルダの移動に失敗しました。",
     "failed_media": "メディアファイルの移動に失敗しました。"
   },
+  "links": {
+    "updated": "{{notes}} 件のノートの {{links}} 件のリンクを更新しました",
+    "update_failed": "{{count}} 件のノートのリンクを更新できませんでした"
+  },
   "search": {
     "previous": "前へ (Shift+F3)",
     "next": "次へ (F3)",

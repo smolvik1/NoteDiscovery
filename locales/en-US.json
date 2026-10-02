@@ -252,6 +252,10 @@
     "failed_folder": "Failed to move folder.",
     "failed_media": "Failed to move media file."
   },
+  "links": {
+    "updated": "Updated {{links}} link(s) in {{notes}} note(s)",
+    "update_failed": "Could not update links in {{count}} note(s)"
+  },
   "search": {
     "previous": "Previous (Shift+F3)",
     "next": "Next (F3)",

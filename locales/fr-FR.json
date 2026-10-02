@@ -252,6 +252,10 @@
     "failed_folder": "Échec du déplacement du dossier.",
     "failed_media": "Échec du déplacement du fichier multimédia."
   },
+  "links": {
+    "updated": "{{links}} lien(s) mis à jour dans {{notes}} note(s)",
+    "update_failed": "Impossible de mettre à jour les liens dans {{count}} note(s)"
+  },
   "search": {
     "previous": "Précédent (Maj+F3)",
     "next": "Suivant (F3)",

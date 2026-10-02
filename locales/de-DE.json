@@ -252,6 +252,10 @@
     "failed_folder": "Verschieben des Ordners fehlgeschlagen.",
     "failed_media": "Verschieben der Mediendatei fehlgeschlagen."
   },
+  "links": {
+    "updated": "{{links}} Link(s) in {{notes}} Notiz(en) aktualisiert",
+    "update_failed": "Links in {{count}} Notiz(en) konnten nicht aktualisiert werden"
+  },
   "search": {
     "previous": "Vorheriger (Umschalt+F3)",
     "next": "Nächster (F3)",

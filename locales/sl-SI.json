@@ -252,6 +252,10 @@
     "failed_folder": "Napaka pri premikanju mape.",
     "failed_media": "Napaka pri premikanju medijske datoteke."
   },
+  "links": {
+    "updated": "Posodobljenih {{links}} povezav v {{notes}} zapiskih",
+    "update_failed": "Povezav v {{count}} zapiskih ni bilo mogoče posodobiti"
+  },
   "search": {
     "previous": "Prejšnje (Shift+F3)",
     "next": "Naslednje (F3)",

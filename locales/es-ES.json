@@ -252,6 +252,10 @@
     "failed_folder": "Error al mover la carpeta.",
     "failed_media": "Error al mover el archivo multimedia."
   },
+  "links": {
+    "updated": "Se actualizaron {{links}} enlace(s) en {{notes}} nota(s)",
+    "update_failed": "No se pudieron actualizar los enlaces en {{count}} nota(s)"
+  },
   "search": {
     "previous": "Anterior (Shift+F3)",
     "next": "Siguiente (F3)",
