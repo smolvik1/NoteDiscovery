@@ -287,6 +287,8 @@
     "hide_underscore_folders_desc": "Masquer _attachments, _templates et autres dossiers préfixés",
     "tab_inserts_tab": "Tab insère une tabulation",
     "tab_inserts_tab_desc": "Appuyez sur Tab pour insérer une tabulation au lieu de changer le focus",
+    "auto_update_links": "Mettre à jour les liens lors d'un déplacement/renommage",
+    "auto_update_links_desc": "Lors du renommage ou du déplacement d'une note ou d'un dossier, réécrit les liens dans les autres notes pour qu'ils continuent de pointer dessus",
     "new_button_action": "Quand vous cliquez sur +",
     "new_button_action_desc": "Maj+clic affiche toujours le sélecteur.",
     "new_button_option_chooser": "Afficher le sélecteur (par défaut)",

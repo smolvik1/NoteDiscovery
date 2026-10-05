@@ -1136,7 +1136,8 @@ async def move_note_endpoint(request: Request, data: dict):
             raise HTTPException(status_code=400, detail="Both oldPath and newPath required")
         
         success, error_msg, link_stats = move_note(
-            config['storage']['notes_dir'], old_path, new_path, update_links=AUTO_UPDATE_LINKS
+            config['storage']['notes_dir'], old_path, new_path,
+            update_links=bool(data.get('updateLinks', AUTO_UPDATE_LINKS))
         )
         
         if not success:
@@ -1173,7 +1174,8 @@ async def move_folder_endpoint(request: Request, data: dict):
             raise HTTPException(status_code=400, detail="Both oldPath and newPath required")
         
         success, error_msg, link_stats = move_folder(
-            config['storage']['notes_dir'], old_path, new_path, update_links=AUTO_UPDATE_LINKS
+            config['storage']['notes_dir'], old_path, new_path,
+            update_links=bool(data.get('updateLinks', AUTO_UPDATE_LINKS))
         )
         
         if not success:
@@ -1204,7 +1206,8 @@ async def rename_folder_endpoint(request: Request, data: dict):
             raise HTTPException(status_code=400, detail="Both oldPath and newPath required")
         
         success, error_msg, link_stats = rename_folder(
-            config['storage']['notes_dir'], old_path, new_path, update_links=AUTO_UPDATE_LINKS
+            config['storage']['notes_dir'], old_path, new_path,
+            update_links=bool(data.get('updateLinks', AUTO_UPDATE_LINKS))
         )
         
         if not success:

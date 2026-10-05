@@ -287,6 +287,8 @@
     "hide_underscore_folders_desc": "Hide _attachments, _templates and other underscore folders from sidebar",
     "tab_inserts_tab": "Tab key inserts tab",
     "tab_inserts_tab_desc": "Press Tab to insert a tab character instead of changing focus",
+    "auto_update_links": "Update links on move/rename",
+    "auto_update_links_desc": "When you rename or move a note or folder, rewrite links in other notes so they keep pointing to it",
     "new_button_action": "When you click +",
     "new_button_action_desc": "Shift+click always shows the chooser.",
     "new_button_option_chooser": "Show chooser (default)",

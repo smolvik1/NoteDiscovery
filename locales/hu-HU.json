@@ -287,6 +287,8 @@
     "hide_underscore_folders_desc": "_attachments, _templates és más aláhúzásos mappák elrejtése",
     "tab_inserts_tab": "Tab billentyű több helyet hagy a szövegben",
     "tab_inserts_tab_desc": "Nyomd meg a Tab-ot, hogy több helyet hagyj a szövegben a fókuszváltás helyett",
+    "auto_update_links": "Hivatkozások frissítése mozgatáskor/átnevezéskor",
+    "auto_update_links_desc": "Jegyzet vagy mappa átnevezésekor vagy mozgatásakor átírja a hivatkozásokat a többi jegyzetben, hogy továbbra is rá mutassanak",
     "new_button_action": "A + gombra kattintva",
     "new_button_action_desc": "Shift+kattintás mindig az opciókat mutatjat.",
     "new_button_option_chooser": "Opciók megjelenítése (alapértelmezett)",

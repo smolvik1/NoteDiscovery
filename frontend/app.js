@@ -60,6 +60,9 @@ const LOCAL_SETTINGS = {
     tabInsertsTab: { key: 'tabInsertsTab', type: 'boolean', default: false },
     sidebarPanelCollapsed: { key: 'sidebarPanelCollapsed', type: 'boolean', default: false },
     autoFillNoteTitle: { key: 'autoFillNoteTitle', type: 'boolean', default: false },
+    // Rewrite links in other notes when a note/folder is renamed or moved. Off by
+    // default; sent per move/rename request and honoured by the backend.
+    autoUpdateLinks: { key: 'autoUpdateLinks', type: 'boolean', default: false },
     // Landmark-anchored editor/preview scroll sync. Off by default: percentage sync
     // is cheaper and adequate for plain prose, while anchoring earns its cost on
     // notes with images, tables or code blocks.
@@ -377,6 +380,9 @@ function noteApp() {
 
         // Tab key inserts tab character instead of changing focus
         tabInsertsTab: localStorage.getItem('tabInsertsTab') === 'true',
+
+        // Rewrite links in other notes when a note/folder is renamed or moved
+        autoUpdateLinks: localStorage.getItem('autoUpdateLinks') === 'true',
 
         // Note sorting mode (a-z, z-a, newest, oldest, largest, smallest)
         sortMode: localStorage.getItem('sortMode') || 'a-z',
@@ -1203,6 +1209,12 @@ function noteApp() {
         toggleTabInsertsTab() {
             this.tabInsertsTab = !this.tabInsertsTab;
             localStorage.setItem('tabInsertsTab', this.tabInsertsTab);
+        },
+
+        // Auto-update links toggle (rewrite backlinks on note/folder move or rename)
+        toggleAutoUpdateLinks() {
+            this.autoUpdateLinks = !this.autoUpdateLinks;
+            localStorage.setItem('autoUpdateLinks', this.autoUpdateLinks);
         },
 
         // Hide / show only the sidebar PANEL (files, search, outline, etc.); the icon rail
@@ -4604,7 +4616,7 @@ function noteApp() {
                     const response = await fetch('/api/folders/move', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ oldPath: draggedPath, newPath })
+                        body: JSON.stringify({ oldPath: draggedPath, newPath, updateLinks: this.autoUpdateLinks })
                     });
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({}));
@@ -4650,7 +4662,7 @@ function noteApp() {
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ oldPath: draggedPath, newPath })
+                    body: JSON.stringify({ oldPath: draggedPath, newPath, updateLinks: this.autoUpdateLinks })
                 });
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
@@ -5435,7 +5447,7 @@ function noteApp() {
                 const response = await fetch('/api/folders/rename', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ oldPath: folderPath, newPath: newPath })
+                    body: JSON.stringify({ oldPath: folderPath, newPath: newPath, updateLinks: this.autoUpdateLinks })
                 });
                 if (!response.ok) throw new Error('Server returned error');
                 const data = await response.json().catch(() => ({}));
@@ -5950,7 +5962,7 @@ function noteApp() {
                 const response = await fetch('/api/notes/move', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ oldPath, newPath })
+                    body: JSON.stringify({ oldPath, newPath, updateLinks: this.autoUpdateLinks })
                 });
                 if (!response.ok) throw new Error('Server returned error');
                 const data = await response.json().catch(() => ({}));

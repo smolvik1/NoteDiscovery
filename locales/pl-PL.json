@@ -287,6 +287,8 @@
     "hide_underscore_folders_desc": "Ukryj foldery _attachments, _templates i inne foldery zaczynające się od podkreślenia na pasku bocznym",
     "tab_inserts_tab": "Klawisz Tab wstawia tabulację",
     "tab_inserts_tab_desc": "Naciśnięcie klawisza Tab wstawia znak tabulacji zamiast zmiany aktywnego elementu",
+    "auto_update_links": "Aktualizuj linki przy przenoszeniu/zmianie nazwy",
+    "auto_update_links_desc": "Po zmianie nazwy lub przeniesieniu notatki albo folderu przepisuje linki w innych notatkach, aby nadal na niego wskazywały",
     "new_button_action": "Akcja po kliknięciu +",
     "new_button_action_desc": "Shift+kliknięcie zawsze pokazuje menu wyboru.",
     "new_button_option_chooser": "Pokaż menu wyboru (domyślnie)",

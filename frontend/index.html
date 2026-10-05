@@ -1883,6 +1883,24 @@
                                     <p class="text-xs mt-1" style="color: var(--text-tertiary);" x-text="t('settings.tab_inserts_tab_desc')"></p>
                                 </div>
 
+                                <!-- Auto-update links on move/rename -->
+                                <div class="mb-4">
+                                    <label class="flex items-center justify-between gap-3 cursor-pointer">
+                                        <span class="text-xs font-medium flex-1 min-w-0" style="color: var(--text-secondary);" x-text="t('settings.auto_update_links')"></span>
+                                        <div 
+                                            @click="toggleAutoUpdateLinks()"
+                                            class="relative w-10 h-5 rounded-full transition-colors cursor-pointer flex-shrink-0"
+                                            :style="autoUpdateLinks ? 'background-color: var(--accent-primary)' : 'background-color: var(--bg-tertiary)'"
+                                        >
+                                            <div 
+                                                class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform"
+                                                :style="'background-color: var(--bg-primary);' + (autoUpdateLinks ? ' transform: translateX(20px);' : '')"
+                                            ></div>
+                                        </div>
+                                    </label>
+                                    <p class="text-xs mt-1" style="color: var(--text-tertiary);" x-text="t('settings.auto_update_links_desc')"></p>
+                                </div>
+
                                 <div class="mb-4">
                                     <label class="block text-xs font-medium mb-2" style="color: var(--text-secondary);" x-text="t('settings.new_button_action')"></label>
                                     <select
