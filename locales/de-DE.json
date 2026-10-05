@@ -252,6 +252,10 @@
     "failed_folder": "Verschieben des Ordners fehlgeschlagen.",
     "failed_media": "Verschieben der Mediendatei fehlgeschlagen."
   },
+  "links": {
+    "updated": "{{links}} Link(s) in {{notes}} Notiz(en) aktualisiert",
+    "update_failed": "Links in {{count}} Notiz(en) konnten nicht aktualisiert werden"
+  },
   "search": {
     "previous": "Vorheriger (Umschalt+F3)",
     "next": "Nächster (F3)",
@@ -283,6 +287,8 @@
     "hide_underscore_folders_desc": "_attachments, _templates und andere Unterstrich-Ordner ausblenden",
     "tab_inserts_tab": "Tab-Taste fügt Tab ein",
     "tab_inserts_tab_desc": "Tab drücken, um ein Tabulatorzeichen einzufügen statt den Fokus zu wechseln",
+    "auto_update_links": "Links beim Verschieben/Umbenennen aktualisieren",
+    "auto_update_links_desc": "Beim Umbenennen oder Verschieben einer Notiz oder eines Ordners Links in anderen Notizen anpassen, damit sie weiter darauf verweisen",
     "new_button_action": "Wenn du auf + klickst",
     "new_button_action_desc": "Umschalt+Klick zeigt immer die Auswahl.",
     "new_button_option_chooser": "Auswahl anzeigen (Standard)",

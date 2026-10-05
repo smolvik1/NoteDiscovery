@@ -32,6 +32,13 @@ storage:
 search:
   enabled: true
 
+notes:
+  # When a note is renamed or moved (or a folder is moved/renamed), rewrite
+  # links in other notes so they keep pointing at the moved note. Also fixes
+  # the moved note's own relative links. Off by default.
+  # Override via the AUTO_UPDATE_LINKS env var.
+  auto_update_links: false
+
 # User interface behavior
 ui:
   # Theme used when a browser has not saved a theme preference yet.

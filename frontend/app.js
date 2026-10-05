@@ -60,6 +60,9 @@ const LOCAL_SETTINGS = {
     tabInsertsTab: { key: 'tabInsertsTab', type: 'boolean', default: false },
     sidebarPanelCollapsed: { key: 'sidebarPanelCollapsed', type: 'boolean', default: false },
     autoFillNoteTitle: { key: 'autoFillNoteTitle', type: 'boolean', default: false },
+    // Rewrite links in other notes when a note/folder is renamed or moved. Off by
+    // default; sent per move/rename request and honoured by the backend.
+    autoUpdateLinks: { key: 'autoUpdateLinks', type: 'boolean', default: false },
     // Landmark-anchored editor/preview scroll sync. Off by default: percentage sync
     // is cheaper and adequate for plain prose, while anchoring earns its cost on
     // notes with images, tables or code blocks.
@@ -377,6 +380,9 @@ function noteApp() {
 
         // Tab key inserts tab character instead of changing focus
         tabInsertsTab: localStorage.getItem('tabInsertsTab') === 'true',
+
+        // Rewrite links in other notes when a note/folder is renamed or moved
+        autoUpdateLinks: localStorage.getItem('autoUpdateLinks') === 'true',
 
         // Note sorting mode (a-z, z-a, newest, oldest, largest, smallest)
         sortMode: localStorage.getItem('sortMode') || 'a-z',
@@ -1215,6 +1221,12 @@ function noteApp() {
         toggleTabInsertsTab() {
             this.tabInsertsTab = !this.tabInsertsTab;
             localStorage.setItem('tabInsertsTab', this.tabInsertsTab);
+        },
+
+        // Auto-update links toggle (rewrite backlinks on note/folder move or rename)
+        toggleAutoUpdateLinks() {
+            this.autoUpdateLinks = !this.autoUpdateLinks;
+            localStorage.setItem('autoUpdateLinks', this.autoUpdateLinks);
         },
 
         // Hide / show only the sidebar PANEL (files, search, outline, etc.); the icon rail
@@ -4826,12 +4838,14 @@ function noteApp() {
                     const response = await fetch('/api/folders/move', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ oldPath: draggedPath, newPath })
+                        body: JSON.stringify({ oldPath: draggedPath, newPath, updateLinks: this.autoUpdateLinks })
                     });
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({}));
                         throw new Error(errorData.detail || this.t('move.failed_folder'));
                     }
+                    const data = await response.json().catch(() => ({}));
+                    this._notifyLinkUpdates(data.linkUpdates);
                     await this.loadSharedNotePaths();
                 } catch (error) {
                     console.error('Failed to move folder:', error);
@@ -4870,12 +4884,16 @@ function noteApp() {
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ oldPath: draggedPath, newPath })
+                    body: JSON.stringify({ oldPath: draggedPath, newPath, updateLinks: this.autoUpdateLinks })
                 });
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
                     const errorKey = isMedia ? 'move.failed_media' : 'move.failed_note';
                     throw new Error(errorData.detail || this.t(errorKey));
+                }
+                if (!isMedia) {
+                    const data = await response.json().catch(() => ({}));
+                    this._notifyLinkUpdates(data.linkUpdates);
                 }
                 if (isNote) await this.loadSharedNotePaths();
             } catch (error) {
@@ -5651,9 +5669,11 @@ function noteApp() {
                 const response = await fetch('/api/folders/rename', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ oldPath: folderPath, newPath: newPath })
+                    body: JSON.stringify({ oldPath: folderPath, newPath: newPath, updateLinks: this.autoUpdateLinks })
                 });
                 if (!response.ok) throw new Error('Server returned error');
+                const data = await response.json().catch(() => ({}));
+                this._notifyLinkUpdates(data.linkUpdates);
                 return true;
             } catch (error) {
                 ErrorHandler.handle('rename folder', error);
@@ -6153,16 +6173,44 @@ function noteApp() {
             this.currentNote = newPath;
             
             try {
-                const response = await fetch(`/api/notes/${newPath}`, {
+                // Flush any unsaved editor content to the old path first, so the
+                // server-side move (which renames the file on disk) preserves
+                // in-progress edits before links are rewritten.
+                await fetch(`/api/notes/${oldPath}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ content: this.noteContent })
                 });
+                const response = await fetch('/api/notes/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ oldPath, newPath, updateLinks: this.autoUpdateLinks })
+                });
                 if (!response.ok) throw new Error('Server returned error');
-                await fetch(`/api/notes/${oldPath}`, { method: 'DELETE' });
+                const data = await response.json().catch(() => ({}));
+                this._notifyLinkUpdates(data.linkUpdates);
+                await this.loadSharedNotePaths();
             } catch (error) {
                 ErrorHandler.handle('rename note', error);
                 await this.loadNotes({ silent: true });
+            }
+        },
+        
+        /**
+         * Surface a toast summarising automatic link rewrites after a move or
+         * rename. No-op when the feature is off (all counts zero) or stats absent.
+         * @param {{updated_links?: number, updated_notes?: number, failed?: number}} [stats]
+         */
+        _notifyLinkUpdates(stats) {
+            if (!stats) return;
+            const links = stats.updated_links || 0;
+            const notes = stats.updated_notes || 0;
+            const failed = stats.failed || 0;
+            if (links > 0) {
+                this.toast(this.t('links.updated', { links, notes }), { type: 'success' });
+            }
+            if (failed > 0) {
+                this.toast(this.t('links.update_failed', { count: failed }), { type: 'warning' });
             }
         },
         

@@ -252,6 +252,10 @@
     "failed_folder": "Impossibile spostare la cartella.",
     "failed_media": "Impossibile spostare il file multimediale."
   },
+  "links": {
+    "updated": "Aggiornati {{links}} collegamento/i in {{notes}} nota/e",
+    "update_failed": "Impossibile aggiornare i collegamenti in {{count}} nota/e"
+  },
   "search": {
     "previous": "Precedente (Shift+F3)",
     "next": "Successivo (F3)",
@@ -283,6 +287,8 @@
     "hide_underscore_folders_desc": "Nascondi _attachments, _templates e altre cartelle con underscore",
     "tab_inserts_tab": "Tab inserisce tabulazione",
     "tab_inserts_tab_desc": "Premi Tab per inserire una tabulazione invece di cambiare focus",
+    "auto_update_links": "Aggiorna i collegamenti allo spostamento/rinomina",
+    "auto_update_links_desc": "Quando rinomini o sposti una nota o una cartella, riscrive i collegamenti nelle altre note affinché continuino a puntarvi",
     "new_button_action": "Quando clicchi su +",
     "new_button_action_desc": "Shift+clic mostra sempre il selettore.",
     "new_button_option_chooser": "Mostra selettore (predefinito)",

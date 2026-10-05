@@ -252,6 +252,10 @@
     "failed_folder": "Napaka pri premikanju mape.",
     "failed_media": "Napaka pri premikanju medijske datoteke."
   },
+  "links": {
+    "updated": "Posodobljenih {{links}} povezav v {{notes}} zapiskih",
+    "update_failed": "Povezav v {{count}} zapiskih ni bilo mogoče posodobiti"
+  },
   "search": {
     "previous": "Prejšnje (Shift+F3)",
     "next": "Naslednje (F3)",
@@ -283,6 +287,8 @@
     "hide_underscore_folders_desc": "Skrij _attachments, _templates in druge mape s podčrtajem",
     "tab_inserts_tab": "Tipka Tab vstavi tabulator",
     "tab_inserts_tab_desc": "Pritisnite Tab za vstavljanje tabulatorja namesto premikanja fokusa",
+    "auto_update_links": "Posodobi povezave ob premiku/preimenovanju",
+    "auto_update_links_desc": "Ko preimenujete ali premaknete zapisek ali mapo, prepiše povezave v drugih zapiskih, da še naprej kažejo nanj",
     "new_button_action": "Ko kliknete +",
     "new_button_action_desc": "Shift+klik vedno pokaže izbirnik.",
     "new_button_option_chooser": "Pokaži izbirnik (privzeto)",

@@ -445,19 +445,125 @@ def scan_notes_fast_walk(notes_dir: str, use_cache: bool = True, include_media: 
         _scan_cache_set(cache_key, value)
     return value
 
-def move_note(notes_dir: str, old_path: str, new_path: str) -> tuple[bool, str]:
-    """Move a note. Returns (success, error_message)."""
+def _empty_link_stats() -> Dict[str, int]:
+    return {"updated_links": 0, "updated_notes": 0, "failed": 0}
+
+
+def _collect_backlink_sources(moves: List[Tuple[str, str]]) -> Tuple[set, set]:
+    """Snapshot (candidate source paths, all note paths) BEFORE moving files.
+    Must run pre-move: the index re-resolves on rename and loses old backlinks."""
+    idx = note_index.get_index()
+    paths_before = {p for p, _ in idx.all_note_records()}
+    moved_old = {old for old, _ in moves}
+    candidates: set = set()
+    for old, _new in moves:
+        candidates |= idx.get_backlink_candidate_sources(old)
+    candidates -= moved_old
+    return candidates, paths_before
+
+
+def _apply_link_updates(
+    notes_dir: str,
+    moves: List[Tuple[str, str]],
+    candidates: set,
+    paths_before: set,
+) -> Dict[str, int]:
+    """Rewrite links after the files have been moved. Best-effort: failures are
+    counted, never raised, and never roll back the move."""
+    from . import link_rewrite as lr
+    from .note_index import _Resolver
+
+    stats = _empty_link_stats()
+    moved_map = {old: new for old, new in moves}
+    moved_old_set = set(moved_map)
+    moved_new_set = set(moved_map.values())
+    paths_after = (paths_before - moved_old_set) | moved_new_set
+
+    resolver_before = _Resolver(paths_before)
+    resolver_after = _Resolver(paths_after)
+    name_counts_after: Dict[str, int] = {}
+    for p in paths_after:
+        stem = Path(p).stem.lower()
+        name_counts_after[stem] = name_counts_after.get(stem, 0) + 1
+
+    base = Path(notes_dir)
+
+    def _write(rel_path: str, content: str) -> None:
+        full = base / rel_path
+        with open(full, "w", encoding="utf-8") as f:
+            f.write(content)
+        _drop_path_caches(full)
+        note_index.on_note_saved(notes_dir, full, content)
+
+    # 1. Incoming backlinks from notes outside the moved set.
+    for source in candidates:
+        full = base / source
+        try:
+            content = full.read_text(encoding="utf-8")
+        except Exception:
+            stats["failed"] += 1
+            continue
+        new_content, n = lr.rewrite_source_content(
+            content, lr.folder_of(source), moved_map,
+            resolver_before, resolver_after, name_counts_after,
+        )
+        if n and new_content != content:
+            try:
+                _write(source, new_content)
+                stats["updated_notes"] += 1
+                stats["updated_links"] += n
+            except Exception:
+                stats["failed"] += 1
+
+    # 2. Each moved note's own note-relative markdown links to unmoved notes.
+    for old, new in moves:
+        full = base / new
+        try:
+            content = full.read_text(encoding="utf-8")
+        except Exception:
+            stats["failed"] += 1
+            continue
+        new_content, n = lr.rewrite_moved_note_own_links(
+            content, lr.folder_of(old), lr.folder_of(new), resolver_before, moved_old_set,
+        )
+        if n and new_content != content:
+            try:
+                _write(new, new_content)
+                stats["updated_notes"] += 1
+                stats["updated_links"] += n
+            except Exception:
+                stats["failed"] += 1
+
+    return stats
+
+
+def move_note(
+    notes_dir: str, old_path: str, new_path: str, update_links: bool = False
+) -> tuple[bool, str, Dict[str, int]]:
+    """Move a note. Returns (success, error_message, link_stats)."""
+    stats = _empty_link_stats()
     old_full_path = Path(notes_dir) / old_path
     new_full_path = Path(notes_dir) / new_path
 
     if not validate_path_security(notes_dir, old_full_path):
-        return False, "Invalid source path"
+        return False, "Invalid source path", stats
     if not validate_path_security(notes_dir, new_full_path):
-        return False, "Invalid destination path"
+        return False, "Invalid destination path", stats
     if not old_full_path.exists():
-        return False, f"Source note does not exist: {old_path}"
+        return False, f"Source note does not exist: {old_path}", stats
     if new_full_path.exists():
-        return False, f"A note already exists at: {new_path}"
+        return False, f"A note already exists at: {new_path}", stats
+
+    moves = [(old_path, new_path)]
+    candidates: set = set()
+    paths_before: set = set()
+    if update_links:
+        try:
+            ensure_index_built(notes_dir)
+            candidates, paths_before = _collect_backlink_sources(moves)
+        except Exception as e:
+            logger.error("move_note: failed to collect backlink sources: %s", e)
+            update_links = False
 
     _drop_path_caches(old_full_path)
 
@@ -465,26 +571,54 @@ def move_note(notes_dir: str, old_path: str, new_path: str) -> tuple[bool, str]:
         new_full_path.parent.mkdir(parents=True, exist_ok=True)
         old_full_path.rename(new_full_path)
     except Exception as e:
-        return False, f"Failed to move file: {str(e)}"
+        return False, f"Failed to move file: {str(e)}", stats
 
     note_index.on_note_renamed(notes_dir, old_full_path, new_full_path)
     _scan_cache_invalidate()
-    return True, ""
+
+    if update_links:
+        try:
+            stats = _apply_link_updates(notes_dir, moves, candidates, paths_before)
+        except Exception as e:
+            logger.error("move_note: link update failed: %s", e)
+
+    return True, "", stats
 
 
-def move_folder(notes_dir: str, old_path: str, new_path: str) -> tuple[bool, str]:
-    """Move a folder. Returns (success, error_message)."""
+def move_folder(
+    notes_dir: str, old_path: str, new_path: str, update_links: bool = False
+) -> tuple[bool, str, Dict[str, int]]:
+    """Move a folder. Returns (success, error_message, link_stats)."""
+    stats = _empty_link_stats()
     old_full_path = Path(notes_dir) / old_path
     new_full_path = Path(notes_dir) / new_path
 
     if not validate_path_security(notes_dir, old_full_path):
-        return False, "Invalid source path"
+        return False, "Invalid source path", stats
     if not validate_path_security(notes_dir, new_full_path):
-        return False, "Invalid destination path"
+        return False, "Invalid destination path", stats
     if not old_full_path.exists() or not old_full_path.is_dir():
-        return False, f"Source folder does not exist: {old_path}"
+        return False, f"Source folder does not exist: {old_path}", stats
     if new_full_path.exists():
-        return False, f"A folder already exists at: {new_path}"
+        return False, f"A folder already exists at: {new_path}", stats
+
+    moves: List[Tuple[str, str]] = []
+    candidates: set = set()
+    paths_before: set = set()
+    if update_links:
+        try:
+            ensure_index_built(notes_dir)
+            old_prefix = old_path.rstrip("/") + "/"
+            for p, _r in note_index.get_index().all_note_records():
+                if p.startswith(old_prefix):
+                    moves.append((p, new_path.rstrip("/") + "/" + p[len(old_prefix):]))
+            if moves:
+                candidates, paths_before = _collect_backlink_sources(moves)
+            else:
+                update_links = False
+        except Exception as e:
+            logger.error("move_folder: failed to collect backlink sources: %s", e)
+            update_links = False
 
     _drop_prefix_caches(old_full_path)
 
@@ -492,16 +626,25 @@ def move_folder(notes_dir: str, old_path: str, new_path: str) -> tuple[bool, str
         new_full_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(old_full_path), str(new_full_path))
     except Exception as e:
-        return False, f"Failed to move folder: {str(e)}"
+        return False, f"Failed to move folder: {str(e)}", stats
 
     note_index.on_folder_renamed(notes_dir, old_full_path, new_full_path)
     _scan_cache_invalidate()
-    return True, ""
+
+    if update_links and moves:
+        try:
+            stats = _apply_link_updates(notes_dir, moves, candidates, paths_before)
+        except Exception as e:
+            logger.error("move_folder: link update failed: %s", e)
+
+    return True, "", stats
 
 
-def rename_folder(notes_dir: str, old_path: str, new_path: str) -> tuple[bool, str]:
+def rename_folder(
+    notes_dir: str, old_path: str, new_path: str, update_links: bool = False
+) -> tuple[bool, str, Dict[str, int]]:
     """Rename a folder (same as move, named for clarity)."""
-    return move_folder(notes_dir, old_path, new_path)
+    return move_folder(notes_dir, old_path, new_path, update_links)
 
 
 def delete_folder(notes_dir: str, folder_path: str) -> bool:

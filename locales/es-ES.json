@@ -252,6 +252,10 @@
     "failed_folder": "Error al mover la carpeta.",
     "failed_media": "Error al mover el archivo multimedia."
   },
+  "links": {
+    "updated": "Se actualizaron {{links}} enlace(s) en {{notes}} nota(s)",
+    "update_failed": "No se pudieron actualizar los enlaces en {{count}} nota(s)"
+  },
   "search": {
     "previous": "Anterior (Shift+F3)",
     "next": "Siguiente (F3)",
@@ -283,6 +287,8 @@
     "hide_underscore_folders_desc": "Ocultar _attachments, _templates y otras carpetas con guion bajo",
     "tab_inserts_tab": "Tabulador inserta tabulación",
     "tab_inserts_tab_desc": "Pulsa Tab para insertar un tabulador en lugar de cambiar el foco",
+    "auto_update_links": "Actualizar enlaces al mover o renombrar",
+    "auto_update_links_desc": "Al renombrar o mover una nota o carpeta, reescribe los enlaces en otras notas para que sigan apuntando a ella",
     "new_button_action": "Cuando haces clic en +",
     "new_button_action_desc": "Mayús+clic siempre muestra el selector.",
     "new_button_option_chooser": "Mostrar selector (por defecto)",

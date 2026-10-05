@@ -252,6 +252,10 @@
     "failed_folder": "移动文件夹失败。",
     "failed_media": "移动媒体文件失败。"
   },
+  "links": {
+    "updated": "已更新 {{notes}} 个笔记中的 {{links}} 个链接",
+    "update_failed": "无法更新 {{count}} 个笔记中的链接"
+  },
   "search": {
     "previous": "上一个 (Shift+F3)",
     "next": "下一个 (F3)",
@@ -283,6 +287,8 @@
     "hide_underscore_folders_desc": "从侧边栏隐藏 _attachments、_templates 等下划线文件夹",
     "tab_inserts_tab": "Tab键插入制表符",
     "tab_inserts_tab_desc": "按Tab键插入制表符而不是切换焦点",
+    "auto_update_links": "移动/重命名时更新链接",
+    "auto_update_links_desc": "重命名或移动笔记或文件夹时，重写其他笔记中的链接，使其继续指向它",
     "new_button_action": "点击 + 时",
     "new_button_action_desc": "Shift+点击始终显示选择器。",
     "new_button_option_chooser": "显示选择器（默认）",

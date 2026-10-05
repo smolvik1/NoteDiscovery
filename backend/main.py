@@ -185,6 +185,13 @@ if 'PLUGINS_DIR' in os.environ:
     _plugins_source = "PLUGINS_DIR env var"
 logger.info("Plugins directory: %s (from %s)", config['storage']['plugins_dir'], _plugins_source)
 
+# Auto-update links on move/rename: AUTO_UPDATE_LINKS env var > notes.auto_update_links.
+config.setdefault('notes', {})
+if 'AUTO_UPDATE_LINKS' in os.environ:
+    config['notes']['auto_update_links'] = os.getenv('AUTO_UPDATE_LINKS', 'false').lower() in ('true', '1', 'yes')
+AUTO_UPDATE_LINKS = bool(config.get('notes', {}).get('auto_update_links', False))
+logger.info("Auto-update links on move/rename: %s", 'ENABLED' if AUTO_UPDATE_LINKS else 'DISABLED')
+
 # OpenAPI tag metadata for grouping endpoints in Swagger UI
 tags_metadata = [
     {"name": "Notes", "description": "Create, read, update, delete notes"},
@@ -1128,7 +1135,10 @@ async def move_note_endpoint(request: Request, data: dict):
         if not old_path or not new_path:
             raise HTTPException(status_code=400, detail="Both oldPath and newPath required")
         
-        success, error_msg = move_note(config['storage']['notes_dir'], old_path, new_path)
+        success, error_msg, link_stats = move_note(
+            config['storage']['notes_dir'], old_path, new_path,
+            update_links=bool(data.get('updateLinks', AUTO_UPDATE_LINKS))
+        )
         
         if not success:
             raise HTTPException(status_code=400, detail=error_msg or "Failed to move note")
@@ -1143,6 +1153,7 @@ async def move_note_endpoint(request: Request, data: dict):
             "success": True,
             "oldPath": old_path,
             "newPath": new_path,
+            "linkUpdates": link_stats,
             "message": "Note moved successfully"
         }
     except HTTPException:
@@ -1162,7 +1173,10 @@ async def move_folder_endpoint(request: Request, data: dict):
         if not old_path or not new_path:
             raise HTTPException(status_code=400, detail="Both oldPath and newPath required")
         
-        success, error_msg = move_folder(config['storage']['notes_dir'], old_path, new_path)
+        success, error_msg, link_stats = move_folder(
+            config['storage']['notes_dir'], old_path, new_path,
+            update_links=bool(data.get('updateLinks', AUTO_UPDATE_LINKS))
+        )
         
         if not success:
             raise HTTPException(status_code=400, detail=error_msg or "Failed to move folder")
@@ -1171,6 +1185,7 @@ async def move_folder_endpoint(request: Request, data: dict):
             "success": True,
             "oldPath": old_path,
             "newPath": new_path,
+            "linkUpdates": link_stats,
             "message": "Folder moved successfully"
         }
     except HTTPException:
@@ -1190,7 +1205,10 @@ async def rename_folder_endpoint(request: Request, data: dict):
         if not old_path or not new_path:
             raise HTTPException(status_code=400, detail="Both oldPath and newPath required")
         
-        success, error_msg = rename_folder(config['storage']['notes_dir'], old_path, new_path)
+        success, error_msg, link_stats = rename_folder(
+            config['storage']['notes_dir'], old_path, new_path,
+            update_links=bool(data.get('updateLinks', AUTO_UPDATE_LINKS))
+        )
         
         if not success:
             raise HTTPException(status_code=400, detail=error_msg or "Failed to rename folder")
@@ -1199,6 +1217,7 @@ async def rename_folder_endpoint(request: Request, data: dict):
             "success": True,
             "oldPath": old_path,
             "newPath": new_path,
+            "linkUpdates": link_stats,
             "message": "Folder renamed successfully"
         }
     except HTTPException:
